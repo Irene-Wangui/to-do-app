@@ -1,0 +1,38 @@
+[
+  {
+    "id": "task1",
+    "title": "My today tasks",
+    "description": "Eat lunch and mealprep meals that will be staying in my fridge for the entire week",
+    "createdDate": "2025-02-04T10:54:59.645014",
+    "dueDate": "2025-02-04T10:54:59.645014",
+    "status": "incomplete",
+    "userId": "User01"
+  },
+  {
+    "id": "task2",
+    "title": "Lazyday tasks",
+    "description": null,
+    "createdDate": "2025-02-04T10:54:59.645014",
+    "dueDate": null,
+    "status": "complete",
+    "userId": "User02"
+  },
+  {
+    "id": "task3",
+    "title": "Gym",
+    "description": "leg work",
+    "createdDate": "2025-02-04T10:54:59.645014",
+    "dueDate": null,
+    "status": "incomplete",
+    "userId": "User03"
+  },
+  {
+    "id": "task4",
+    "title": "code",
+    "description": null,
+    "createdDate": "2025-02-04T10:54:59.645014",
+    "dueDate": "2025-02-04T10:54:59.645014",
+    "status": "complete",
+    "userId": "User04"
+  }
+]

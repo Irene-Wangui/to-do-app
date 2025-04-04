@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+class MyTheme {
+  static const Color primaryColor = Colors.tealAccent;
+  static const Color secondaryColor = Colors.deepOrangeAccent;
+  static const Color backgroundColor = Colors.white;
+  static const Color textColor = Colors.grey;
+
+  // TextStyles and fonts
+  static final TextStyle headingStyle = GoogleFonts.montserrat(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: textColor,
+  );
+
+  static final TextStyle subheadingStyle = GoogleFonts.poppins(
+    fontSize: 18,
+    fontWeight: FontWeight.w500,
+    color: textColor,
+  );
+
+  static final TextStyle bodyTextStyle = GoogleFonts.poppins(
+    fontSize: 16,
+    fontWeight: FontWeight.normal,
+    color: textColor,
+  );
+
+  // ThemeData
+  static ThemeData get lightTheme {
+    return ThemeData(
+      primaryColor: primaryColor,
+      scaffoldBackgroundColor: backgroundColor,
+      colorScheme: const ColorScheme.light(
+        primary: primaryColor,
+        secondary: secondaryColor,
+        surface: backgroundColor,
+        onPrimary: Colors.black,
+        onSecondary: Colors.black,
+        onSurface: textColor,
+      ),
+      textTheme: TextTheme(
+        headlineLarge: headingStyle,
+        titleMedium: subheadingStyle,
+        bodyLarge: bodyTextStyle,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.blueGrey,
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: secondaryColor,
+          foregroundColor: Colors.white,
+          textStyle: const TextStyle(fontSize: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+    );
+      ), 
+  }
+}
