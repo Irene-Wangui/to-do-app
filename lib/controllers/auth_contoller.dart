@@ -8,7 +8,7 @@ import 'package:todoapp/Pages/sign_in_page.dart';
 
 class AuthController extends GetxController {
   static AuthController get to => Get.find();
-  final isloadingAuth = false.obs;
+  final isloadingAuth = true.obs;
   final user = FirebaseAuth.instance.currentUser.obs;
   @override
   void onInit() {
@@ -18,17 +18,26 @@ class AuthController extends GetxController {
       if (u == null) {
         log('User is currently signed out!');
         isloadingAuth.value = false;
+        update();
       } else {
         log('User is signed in!');
         isloadingAuth.value = false;
+        update();
         Get.off(() => HomePage());
       }
     });
   }
 
   Future<UserCredential> signInWithGoogle() async {
+    isloadingAuth.value = true;
+    update();
     // Trigger the authentication flow
-    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn().catchError((e, s) {
+      log('there was an errror signing in.$e\n $s');
+      isloadingAuth.value = false;
+      update();
+      return null;
+    });
 
     // Obtain the auth details from the request
     final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
@@ -38,6 +47,8 @@ class AuthController extends GetxController {
       accessToken: googleAuth?.accessToken,
       idToken: googleAuth?.idToken,
     );
+    isloadingAuth.value = false;
+    update();
 
     // Once signed in, return the UserCredential
     return await FirebaseAuth.instance.signInWithCredential(credential);

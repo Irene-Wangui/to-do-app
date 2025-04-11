@@ -1,12 +1,16 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:developer';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import 'package:todoapp/Pages/my_account_page.dart';
 import 'package:todoapp/controllers/auth_contoller.dart';
 import 'package:todoapp/controllers/tasks_controller.dart';
 import 'package:todoapp/models/task_model.dart';
+import 'package:todoapp/theme/styles.dart';
 import 'package:todoapp/widgets/todo_list_item.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,17 +23,17 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   User? user = FirebaseAuth.instance.currentUser;
   final authcontroller = AuthController.to;
-  late TasksController tasksController;
+  TasksController tasksController = Get.put(TasksController(), permanent: true);
   DateTime? pickedDate;
 
   @override
   void initState() {
     super.initState();
-    tasksController = Get.put(TasksController(), permanent: true);
+    // tasksController = Get.put(TasksController(), permanent: true);
     log('homepage initialized');
   }
 
-  void onSave(Task t) {
+  void onSave(TaskItem t) {
     log("saving task: ${t.toJson()}");
     int index = tasksController.tasks.indexWhere((e) => e.id == t.id);
     setState(() {
@@ -37,7 +41,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void onDelete(Task t) {
+  void onDelete(TaskItem t) {
     setState(() {
       tasksController.tasks.removeWhere((e) => e.id == t.id);
     });
@@ -47,7 +51,7 @@ class _HomePageState extends State<HomePage> {
     log("item $id status changed to $val");
     String newStatus = val == true ? "complete" : "incomplete";
     int index = tasksController.tasks.indexWhere((e) => e.id == id);
-    Task t = tasksController.tasks[index];
+    TaskItem t = tasksController.tasks[index];
     t.status = newStatus;
     tasksController.onItemStatusChange(id: id, val: val);
     setState(() {
@@ -63,7 +67,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void addTask({required String title, String? description, DateTime? dueDate}) async {
-    Task t = Task(
+    TaskItem t = TaskItem(
       title: title,
       description: description,
       status: "incomplete",
@@ -71,7 +75,9 @@ class _HomePageState extends State<HomePage> {
       createdDate: DateTime.now(),
     );
     log("called add");
-    await tasksController.uploadTask(t);
+    await tasksController.uploadTask(t, []).catchError((e, s) {
+      log("There was an error uploading the task.$e\n$s");
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -166,14 +172,19 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     //final tasksController = Get.put(TasksController(), permanent: true);
+
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       //resizeToAvoidBottomInset: false,
       appBar: AppBar(
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 5, top: 10),
+          padding: EdgeInsets.only(left: 5, top: 10),
           child: Text(
-            " ${user!.displayName}",
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, overflow: TextOverflow.visible),
+            " Hello,${user?.displayName!.split(' ').first ?? 'User'}",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, overflow: TextOverflow.visible),
           ),
         ),
         actions: <Widget>[
@@ -231,34 +242,29 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
-        title: const Text("ToDo App"),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+          child: const Text("ToDo App"),
+        ),
       ),
       body: GetX<TasksController>(
           init: TasksController(),
           builder: (tasksController) {
+            if (tasksController.isfetchingTasks.value) {
+              return Center(
+                child: SpinKitThreeBounce(
+                  color: $styles.colors.primary,
+                  size: 40,
+                ),
+              );
+            }
+            if (tasksController.tasks.isEmpty)
+              return Center(
+                child: Text("No tasks yet"),
+              );
+
             return ListView(
-              children: tasksController.tasks
-                  .map((item) => TodoListItem(
-                        task: item,
-                        onStatusChange: (String id, bool val) {
-                          onStatusChange(id, val);
-                        },
-                        onDelete: () {
-                          tasksController.onItemDelete(item.id!).then((_) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Item deleted'),
-                                duration: Duration(seconds: 2),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          });
-                        },
-                        onSave: (t) {
-                          onSave(t);
-                        },
-                      ))
-                  .toList(),
+              children: tasksController.tasks.map((item) => TodoListItem(task: item)).toList(),
             );
           }),
       floatingActionButton: FloatingActionButton(

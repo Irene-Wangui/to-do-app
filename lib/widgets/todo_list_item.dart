@@ -1,24 +1,23 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:todoapp/Pages/taskpage.dart';
+import 'package:todoapp/controllers/tasks_controller.dart';
 import 'package:todoapp/models/task_model.dart';
 
 class TodoListItem extends StatelessWidget {
-  final Task task;
-  final Function(String, bool) onStatusChange;
-  final Function() onDelete;
-  final Function(Task) onSave;
+  final TaskItem task;
 
   const TodoListItem({
     super.key,
     required this.task,
-    required this.onDelete,
-    required this.onStatusChange,
-    required this.onSave,
   });
 
   @override
   Widget build(BuildContext context) {
+    final taskcontroller = TasksController.to;
     return ListTile(
       onTap: () {
         log("clicked on ${task.id}");
@@ -26,30 +25,28 @@ class TodoListItem extends StatelessWidget {
         Navigator.of(context).push(MaterialPageRoute(
           builder: (context) => Taskpage(
             importedTask: task,
-            onSave: (Task t) {
-              onSave(t);
-            },
-            onDelete: (Task t) {
-              onDelete();
-            },
-            onstatusChange: (String id, bool val) {
-              return onStatusChange(id, val);
-            },
           ),
         ));
       },
       leading: Checkbox(
         value: task.status == "complete",
         onChanged: (val) {
-          onStatusChange(task.id!, val ?? false);
+          taskcontroller.onItemStatusChange(id: task.id!, val: val ?? false);
         },
       ),
       title: Row(
         children: [
           Text(
             task.title,
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
           ),
+          if (kDebugMode)
+            Text(task.id!.substring(0, 4),
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ))
           /*  Text(description ?? "No description",  
                     overflow: TextOverflow.ellipsis, maxLines: 2), */
         ],
@@ -59,7 +56,8 @@ class TodoListItem extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
       ),
-      trailing: IconButton(onPressed: () => onDelete(), icon: Icon(Icons.delete), color: Colors.red),
+      trailing: IconButton(
+          onPressed: () => taskcontroller.onItemDelete(task.id!), icon: const Icon(Icons.delete), color: Colors.red),
     );
   }
 }

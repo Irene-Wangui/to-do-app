@@ -1,9 +1,11 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:todoapp/controllers/auth_contoller.dart';
+import 'package:todoapp/theme/styles.dart';
 
 class SignInPage extends StatelessWidget {
   SignInPage({super.key});
@@ -16,7 +18,10 @@ class SignInPage extends StatelessWidget {
         builder: (authController) {
           return Center(
             child: authController.isloadingAuth.value
-                ? const SizedBox(height: 50, width: 50, child: CircularProgressIndicator())
+                ? SpinKitThreeBounce(
+                    color: $styles.colors.black,
+                    size: 40,
+                  )
                 : SafeArea(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,

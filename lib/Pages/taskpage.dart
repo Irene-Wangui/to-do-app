@@ -1,64 +1,93 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'dart:developer';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:loading_overlay/loading_overlay.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:mime/mime.dart';
+import 'package:todoapp/controllers/tasks_controller.dart';
 import 'package:todoapp/models/task_model.dart';
 
 class Taskpage extends StatefulWidget {
-  final Task importedTask;
-  final Function(Task) onSave;
-  final Function(Task) onDelete;
-  final Function(String, bool) onstatusChange;
-  const Taskpage(
-      {super.key,
-      required this.importedTask,
-      required this.onSave,
-      required this.onDelete,
-      required this.onstatusChange});
+  final TaskItem importedTask;
+
+  const Taskpage({
+    super.key,
+    required this.importedTask,
+  });
 
   @override
   State<Taskpage> createState() => _TaskpageState();
 }
 
 class _TaskpageState extends State<Taskpage> {
-  late Task task;
+  final tasksController = TasksController.to;
   late TextEditingController descriptionController;
   XFile? image;
+  List<File> selectedFiles = [];
+  List<String> existingAttachments = [];
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    setState(() {
-      task = widget.importedTask;
-      descriptionController = TextEditingController(text: task.description);
-    });
+    existingAttachments = List.from(widget.importedTask.attachments);
   }
 
-  Future<void> selectImage() async {
-    XFile? pickedImage = await ImagePicker().pickImage(source: ImageSource.gallery);
-    setState(() {
-      image = pickedImage;
-    });
+  Future<void> selectImages() async {
+    List<XFile?> pickedImages = await ImagePicker().pickMultiImage();
+    for (var i = 0; i < pickedImages.length; i++) {
+      if (pickedImages[i] == null) {
+        continue;
+      }
+      setState(() {
+        selectedFiles.add(File(pickedImages[i]!.path));
+      });
+    }
   }
 
-  void saveTask() {
-    Task updatedTask = Task(
+  Future<void> selectFiles() async {
+    final pickedFiles = await FilePicker.platform.pickFiles(allowMultiple: true);
+    if (pickedFiles != null) {
+      List<File> files = pickedFiles.paths.map((path) => File(path!)).toList();
+      setState(() {
+        selectedFiles.addAll(files);
+      });
+    }
+  }
+
+  void saveTask(TaskItem task) {
+    TaskItem updatedTask = TaskItem(
       id: task.id,
       title: task.title,
       description: descriptionController.text,
       status: task.status,
       createdDate: task.createdDate,
       dueDate: task.dueDate,
+      attachments: existingAttachments,
     );
 
-    widget.onSave(updatedTask);
-
+    onSave(updatedTask);
     log("updated task: ${updatedTask.toJson()}");
   }
 
-  void deleteTask() async {
+  void onSave(TaskItem t) async {
+    log("saving task: ${t.id}: ${t.title}");
+    int index = tasksController.tasks.indexWhere((e) => e.id == t.id);
+    setState(() {
+      tasksController.tasks[index] = t;
+    });
+    log("Task page pre-upload");
+    await tasksController.uploadTask(t, selectedFiles);
+    log("Task ${t.id} saved");
+    Navigator.pop(context);
+  }
+
+  void deleteTask(String id) async {
     bool shouldDelete = await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -85,162 +114,268 @@ class _TaskpageState extends State<Taskpage> {
         );
       },
     );
-
     if (shouldDelete) {
-      widget.onDelete(task);
+      tasksController.onItemDelete(id);
       Navigator.pop(context);
+    }
+  }
+
+  void showSelectorModal() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const SizedBox(height: 20),
+            TextButton(
+              child: const Row(children: [Text('Add Photo')]),
+              onPressed: () async {
+                log("clicked add photo");
+                await selectImages();
+                Navigator.pop(context);
+              },
+            ),
+            TextButton(
+              child: const Row(children: [Text('Add file')]),
+              onPressed: () async {
+                log("clicked added file");
+                await selectFiles();
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAttachmentWidget(String attachmentUrl) {
+    final mimeType = lookupMimeType(attachmentUrl);
+    String? fileType = mimeType?.split("/").first;
+    switch (fileType) {
+      case "image":
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 5),
+          constraints: const BoxConstraints(maxHeight: 200),
+          child: Row(
+            children: [
+              Spacer(),
+              Image.network(attachmentUrl),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.red.shade900),
+                onPressed: () {
+                  setState(() {
+                    existingAttachments.remove(attachmentUrl);
+                  });
+                },
+              )
+            ],
+          ),
+        );
+      case "application":
+      case "audio":
+      case "text":
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 3),
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(borderRadius: BorderRadius.zero),
+          child: Row(
+            children: [
+              Text(attachmentUrl.split("/").last),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.red.shade900),
+                onPressed: () {
+                  setState(() {
+                    existingAttachments.remove(attachmentUrl);
+                  });
+                },
+              )
+            ],
+          ),
+        );
+      default:
+        return Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(border: Border.all(color: Colors.black54)),
+          child: Text("Unsupported File Type"),
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        title: Text(task.title),
-        actions: [
-          IconButton(
-              onPressed: () {
-                log("should edit");
-              },
-              icon: const Icon(Icons.edit)),
-          IconButton(
-              onPressed: () {
-                log("should delete");
-                deleteTask();
-              },
-              icon: const Icon(Icons.delete)),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ListView(
-          // mainAxisSize: MainAxisSize.min,
-          //crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              height: 100,
-              child: TextField(
-                controller: descriptionController,
-                maxLines: 10,
-                minLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Task description',
-                  hintText: 'Add a description',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            Column(
-              children: [
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Duedate: "),
-                        Text(
-                          task.dueDate == null ? "pick a duedate" : DateFormat.yMMMEd().format(task.dueDate!),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Attach file", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                ),
-                const SizedBox(height: 7),
-                OutlinedButton(
-                  onPressed: () {
-                    log("should attach file");
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 20),
-                            TextButton(
-                              onPressed: () {
-                                log('pressed on add photo');
-                                selectImage();
-                              },
-                              child: const Row(
-                                children: [
-                                  Text("Add Photo"),
-                                ],
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                log('pressed on add file');
-                              },
-                              child: const Row(
-                                children: [
-                                  Text("Add file"),
-                                  SizedBox(
-                                    height: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(15),
-                      ),
-                    ),
-                  ),
-                  child: Container(
-                      alignment: Alignment.center,
-                      constraints: const BoxConstraints(
-                        minHeight: 100,
-                      ),
-                      child: image != null
-                          ? Image.file(
-                              File(image!.path),
-                              height: 200,
-                            )
-                          : Icon(MdiIcons.fileUpload, size: 42)),
-                ),
-                CheckboxListTile(
-                  value: task.status == "complete",
-                  onChanged: (value) {
-                    setState(() {
-                      widget.onstatusChange(task.id!, value ?? false);
-                    });
-                  },
-                  title: const Text("mark as complete/incomplete"),
-                  subtitle: Text(task.status == "complete" ? "Task is complete" : "Task is incomplete"),
-                ),
-                ElevatedButton(
+    return GetX(
+      init: TasksController(),
+      builder: (_) {
+        TaskItem task = tasksController.tasks.firstWhere((e) => e.id == widget.importedTask.id);
+        descriptionController = TextEditingController(text: task.description);
+        return LoadingOverlay(
+          isLoading: tasksController.isuploadingTasks.value,
+          progressIndicator: CircularProgressIndicator(),
+          child: Scaffold(
+            resizeToAvoidBottomInset: false,
+            appBar: AppBar(
+              title: Text(task.title),
+              actions: [
+                IconButton(onPressed: () {}, icon: const Icon(Icons.edit)),
+                IconButton(
                     onPressed: () {
-                      log("should save");
-                      saveTask();
-                      Navigator.pop(context);
+                      deleteTask(task.id!);
                     },
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("SAVE"),
-                        SizedBox(width: 12),
-                        Icon(Icons.save),
-                      ],
-                    )),
+                    icon: const Icon(Icons.delete)),
               ],
             ),
-          ],
-        ),
-      ),
+            body: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ListView(
+                children: [
+                  SizedBox(
+                    height: 100,
+                    child: TextField(
+                      controller: descriptionController,
+                      maxLines: 10,
+                      minLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Task description',
+                        hintText: 'Add a description',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      CheckboxListTile(
+                        value: task.status == "complete",
+                        onChanged: (value) {
+                          setState(() {
+                            tasksController.onItemStatusChange(id: task.id!, val: value ?? false);
+                          });
+                        },
+                        title: const Text("mark as complete/incomplete"),
+                        subtitle: Text(task.status == "complete" ? "Task is complete" : "Task is incomplete"),
+                      ),
+                      Row(
+                        children: [
+                          const Text('Due Date: '),
+                          const Spacer(),
+                          ElevatedButton(
+                            onPressed: () async {
+                              DateTime? pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: task.dueDate ?? DateTime.now(),
+                                firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                              );
+                              if (pickedDate != null) {
+                                setState(() {
+                                  task.dueDate = pickedDate;
+                                });
+                              }
+                            },
+                            child:
+                                Text(task.dueDate != null ? DateFormat.yMMMEd().format(task.dueDate!) : 'Pick a date'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16.0),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Attach file", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      ),
+                      const SizedBox(height: 7),
+                      OutlinedButton(
+                        onPressed: () {
+                          showSelectorModal();
+                        },
+                        child: Container(
+                          alignment: Alignment.center,
+                          constraints: const BoxConstraints(minHeight: 100),
+                          child: image != null
+                              ? Image.file(File(image!.path), height: 200)
+                              : Icon(MdiIcons.fileUpload, size: 42),
+                        ),
+                      ),
+                      ...selectedFiles.map((e) {
+                        final mimeType = lookupMimeType(e.path);
+                        String? fileType = mimeType?.split("/").first;
+                        switch (fileType) {
+                          case "image":
+                            return Container(
+                              padding: EdgeInsets.symmetric(vertical: 5),
+                              constraints: const BoxConstraints(maxHeight: 200),
+                              child: Row(
+                                children: [
+                                  Spacer(),
+                                  Image.file(File(e.path)),
+                                  Spacer(),
+                                  IconButton(
+                                      icon: Icon(Icons.delete, color: Colors.red.shade900),
+                                      onPressed: () {
+                                        setState(() {
+                                          selectedFiles.removeWhere((e2) => e2.path == e.path);
+                                        });
+                                      })
+                                ],
+                              ),
+                            );
+                          case "application":
+                          case "audio":
+                          case "text":
+                            return Container(
+                              margin: EdgeInsets.symmetric(vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              decoration: BoxDecoration(borderRadius: BorderRadius.zero),
+                              child: Row(
+                                children: [
+                                  Text(e.path.split("/").last),
+                                  Spacer(),
+                                  IconButton(
+                                      icon: Icon(Icons.delete, color: Colors.red.shade900),
+                                      onPressed: () {
+                                        setState(() {
+                                          selectedFiles.removeWhere((e2) => e2.path == e.path);
+                                        });
+                                      })
+                                ],
+                              ),
+                            );
+                          default:
+                            return Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(border: Border.all(color: Colors.black54)),
+                              child: Text("Unsupported File Type"),
+                            );
+                        }
+                      }),
+                      ...existingAttachments.map((attachmentUrl) => _buildAttachmentWidget(attachmentUrl)),
+                      if (selectedFiles.isNotEmpty)
+                        ElevatedButton(
+                            onPressed: () {
+                              showSelectorModal();
+                            },
+                            child: Text("Add image/file")),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            saveTask(task);
+                          },
+                          child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [Text("SAVE"), SizedBox(width: 8), Icon(Icons.save)]),
+                        ),
+                      )
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

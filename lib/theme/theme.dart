@@ -35,9 +35,9 @@ ThemeData lightTheme = ThemeData(
     bodyColor: $styles.colors.black, // Or ColorScheme.onBackground
     displayColor: $styles.colors.black,
   ),
-  scaffoldBackgroundColor: $styles.colors.white, // Basic light background
+  scaffoldBackgroundColor: $styles.colors.greyLight, // Basic light background
   appBarTheme: AppBarTheme(
-    backgroundColor: Colors.transparent, // Or $styles.colors.white
+    backgroundColor: Colors.yellow, // Or $styles.colors.white
     foregroundColor: $styles.colors.black, // Icons/text on appbar
     elevation: 0,
     scrolledUnderElevation: 0.5,
@@ -111,7 +111,7 @@ ThemeData darkTheme = ThemeData(
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: $styles.colors.primary, // Keep button background
+      backgroundColor: $styles.colors.accent, // Keep button background
       foregroundColor: $styles.colors.white, // Keep button text/icon
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(7.0),
