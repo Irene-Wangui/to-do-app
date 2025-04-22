@@ -12,6 +12,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:mime/mime.dart';
 import 'package:todoapp/controllers/tasks_controller.dart';
 import 'package:todoapp/models/task_model.dart';
+import 'package:todoapp/cloud_file_widget.dart';
 
 class Taskpage extends StatefulWidget {
   final TaskItem importedTask;
@@ -30,12 +31,23 @@ class _TaskpageState extends State<Taskpage> {
   late TextEditingController descriptionController;
   XFile? image;
   List<File> selectedFiles = [];
-  List<String> existingAttachments = [];
+  List<File> cloudFiles = [];
+  List<File> downloadedFiles = [];
 
   @override
   void initState() {
     super.initState();
-    existingAttachments = List.from(widget.importedTask.attachments);
+    //initiate file fetch
+    tasksController.downloadTaskFiles(taskId: widget.importedTask.id!).then((files) {
+      setState(() {
+        cloudFiles = files;
+      });
+      cloudFiles.forEach((file) {
+        log("File ${file.path.split("/").last}: ${file.path}");
+      });
+    }).catchError((e) {
+      log("Error fetching task files: $e");
+    });
   }
 
   Future<void> selectImages() async {
@@ -57,7 +69,7 @@ class _TaskpageState extends State<Taskpage> {
       setState(() {
         selectedFiles.addAll(files);
       });
-    }
+    } else {}
   }
 
   void saveTask(TaskItem task) {
@@ -68,7 +80,7 @@ class _TaskpageState extends State<Taskpage> {
       status: task.status,
       createdDate: task.createdDate,
       dueDate: task.dueDate,
-      attachments: existingAttachments,
+      //attachments: existingAttachments,
     );
 
     onSave(updatedTask);
@@ -93,7 +105,7 @@ class _TaskpageState extends State<Taskpage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('delete task'),
-          content: const Text("are you sure you want to delete this text?"),
+          content: const Text("are you sure you want to delete this task?"),
           actions: [
             TextButton(
               onPressed: () {
@@ -117,6 +129,46 @@ class _TaskpageState extends State<Taskpage> {
     if (shouldDelete) {
       tasksController.onItemDelete(id);
       Navigator.pop(context);
+    }
+  }
+
+  void editTaskTitle(TaskItem task) async {
+    TextEditingController titleController = TextEditingController(text: task.title);
+
+    bool shouldUpdate = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Edit task'),
+          content: TextField(
+            controller: titleController,
+            decoration: const InputDecoration(labelText: 'Task Title'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text('cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text(
+                "save changes",
+                style: TextStyle(color: Colors.blue),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (shouldUpdate == true && titleController.text.trim().isNotEmpty) {
+      setState(() {
+        task.title = titleController.text.trim();
+      });
+      log("Updated Task Title: ${task.title}");
     }
   }
 
@@ -151,61 +203,6 @@ class _TaskpageState extends State<Taskpage> {
     );
   }
 
-  Widget _buildAttachmentWidget(String attachmentUrl) {
-    final mimeType = lookupMimeType(attachmentUrl);
-    String? fileType = mimeType?.split("/").first;
-    switch (fileType) {
-      case "image":
-        return Container(
-          padding: EdgeInsets.symmetric(vertical: 5),
-          constraints: const BoxConstraints(maxHeight: 200),
-          child: Row(
-            children: [
-              Spacer(),
-              Image.network(attachmentUrl),
-              Spacer(),
-              IconButton(
-                icon: Icon(Icons.delete, color: Colors.red.shade900),
-                onPressed: () {
-                  setState(() {
-                    existingAttachments.remove(attachmentUrl);
-                  });
-                },
-              )
-            ],
-          ),
-        );
-      case "application":
-      case "audio":
-      case "text":
-        return Container(
-          margin: EdgeInsets.symmetric(vertical: 3),
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(borderRadius: BorderRadius.zero),
-          child: Row(
-            children: [
-              Text(attachmentUrl.split("/").last),
-              Spacer(),
-              IconButton(
-                icon: Icon(Icons.delete, color: Colors.red.shade900),
-                onPressed: () {
-                  setState(() {
-                    existingAttachments.remove(attachmentUrl);
-                  });
-                },
-              )
-            ],
-          ),
-        );
-      default:
-        return Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(border: Border.all(color: Colors.black54)),
-          child: Text("Unsupported File Type"),
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GetX(
@@ -221,7 +218,11 @@ class _TaskpageState extends State<Taskpage> {
             appBar: AppBar(
               title: Text(task.title),
               actions: [
-                IconButton(onPressed: () {}, icon: const Icon(Icons.edit)),
+                IconButton(
+                    onPressed: () {
+                      editTaskTitle(widget.importedTask);
+                    },
+                    icon: const Icon(Icons.edit)),
                 IconButton(
                     onPressed: () {
                       deleteTask(task.id!);
@@ -248,16 +249,19 @@ class _TaskpageState extends State<Taskpage> {
                   ),
                   Column(
                     children: [
-                      CheckboxListTile(
-                        value: task.status == "complete",
-                        onChanged: (value) {
-                          setState(() {
-                            tasksController.onItemStatusChange(id: task.id!, val: value ?? false);
-                          });
-                        },
-                        title: const Text("mark as complete/incomplete"),
-                        subtitle: Text(task.status == "complete" ? "Task is complete" : "Task is incomplete"),
-                      ),
+                      GetBuilder<TasksController>(builder: (controller) {
+                        final task = controller.tasks.firstWhere((e) => e.id == widget.importedTask.id);
+                        return CheckboxListTile(
+                          value: task.status == "complete",
+                          onChanged: (value) {
+                            setState(() {
+                              tasksController.onItemStatusChange(id: task.id!, val: value ?? false);
+                            });
+                          },
+                          title: const Text("mark as complete/incomplete"),
+                          subtitle: Text(task.status == "complete" ? "Task is complete" : "Task is incomplete"),
+                        );
+                      }),
                       Row(
                         children: [
                           const Text('Due Date: '),
@@ -299,6 +303,8 @@ class _TaskpageState extends State<Taskpage> {
                               : Icon(MdiIcons.fileUpload, size: 42),
                         ),
                       ),
+                      Text('cloud files'),
+                      ...cloudFiles.map((e) => CloudFileWidget(cloudFile: e, task: task)),
                       ...selectedFiles.map((e) {
                         final mimeType = lookupMimeType(e.path);
                         String? fileType = mimeType?.split("/").first;
@@ -351,13 +357,11 @@ class _TaskpageState extends State<Taskpage> {
                             );
                         }
                       }),
-                      ...existingAttachments.map((attachmentUrl) => _buildAttachmentWidget(attachmentUrl)),
-                      if (selectedFiles.isNotEmpty)
-                        ElevatedButton(
-                            onPressed: () {
-                              showSelectorModal();
-                            },
-                            child: Text("Add image/file")),
+                      ElevatedButton(
+                          onPressed: () {
+                            showSelectorModal();
+                          },
+                          child: Text("Add image/file")),
                       Center(
                         child: ElevatedButton(
                           onPressed: () {

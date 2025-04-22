@@ -1,8 +1,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
-        android:label="todoapp"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+  <!-- Devices running Android 13 (API level 33) or higher -->
+      <uses-permission android:name="android.permission.INTERNET"/>
+     <!-- Devices running Android 12L (API level 32) or lower  -->
+     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+ 
+     <!-- Devices running Android 13 (API level 33) or higher -->
+     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+ 
+     <!-- To handle the reselection within the app on devices running Android 14
+          or higher if your app targets Android 14 (API level 34) or higher.  -->
+     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/> 
+     <application android:label="smokeless_todo" android:name="${applicationName}" android:icon="@mipmap/ic_launcher">
+     <meta-data
+    android:name="firebase_messaging_auto_init_enabled"
+    android:value="false" />
+<meta-data
+    android:name="firebase_analytics_collection_enabled"
+    android:value="false" />
+        
+<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+    </intent-filter>
+</receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"

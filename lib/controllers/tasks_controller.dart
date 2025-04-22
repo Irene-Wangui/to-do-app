@@ -5,8 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:todoapp/controllers/auth_contoller.dart';
 import 'package:todoapp/models/task_model.dart';
+import 'package:todoapp/utils/show_toast.dart';
 
 class TasksController extends GetxController {
   //move upload task here
@@ -66,6 +68,7 @@ class TasksController extends GetxController {
     // Assign and upload the referenced doc
     await ref.set(task.toJson(firebaseFormat: true)).then((v) {
       log("uploaded task ${task.id}: ${task.title}");
+      showToast(title: 'Taskuploaded', type: ToastType.successs);
       int index = tasks.indexWhere((e) => e.id == task.id);
       if (index > -1) {
         tasks[index] = task;
@@ -117,7 +120,8 @@ class TasksController extends GetxController {
     });
   }
 
-  Future<void> onItemStatusChange({required String id, required bool val}) async {
+  Future<void> onItemStatusChange(
+      {required String id, required bool val}) async {
     final db = FirebaseFirestore.instance;
     String newstatus = val ? "complete" : "incomplete";
     await db.collection("tasks").doc(id).update({
@@ -125,19 +129,24 @@ class TasksController extends GetxController {
     });
   }
 
-  Future<String?> uploadFile({required String taskId, required File file}) async {
-    final storageRef = FirebaseStorage.instanceFor(bucket: "gs://smokeless-todo.firebasestorage.app").ref();
+  Future<String?> uploadFile(
+      {required String taskId, required File file}) async {
+    final storageRef = FirebaseStorage.instanceFor(
+            bucket: "gs://smokeless-todo.firebasestorage.app")
+        .ref();
     final String fileName = file.path.split("/").last;
     final taskFolderRef = storageRef.child("tasks/$taskId/$fileName");
 
     log("Should upload to $taskFolderRef");
 
-    TaskSnapshot snapshot = await taskFolderRef.putFile(file).catchError((e, s) {
+    TaskSnapshot snapshot =
+        await taskFolderRef.putFile(file).catchError((e, s) {
       log("There was an error uploading the file. $e\n$s");
       return;
     });
 
-    String? downloadUrl = await snapshot.ref.getDownloadURL().catchError((e, s) {
+    String? downloadUrl =
+        await snapshot.ref.getDownloadURL().catchError((e, s) {
       log("There was an error getting the download url. $e\n$s");
       return "";
     });
@@ -146,9 +155,12 @@ class TasksController extends GetxController {
     return downloadUrl;
   }
 
-  Future<String?> uploadProfile({required String userId, required File file}) async {
+  Future<String?> uploadProfile(
+      {required String userId, required File file}) async {
     log("Update prof pic called");
-    final storageRef = FirebaseStorage.instanceFor(bucket: "gs://smokeless-todo.firebasestorage.app").ref();
+    final storageRef = FirebaseStorage.instanceFor(
+            bucket: "gs://smokeless-todo.firebasestorage.app")
+        .ref();
     final String extension = file.path.split("/").last.split(".").last;
     final String profile = 'profile.$extension';
     final profileRef = storageRef.child("img/users/$userId/$profile");
@@ -167,7 +179,9 @@ class TasksController extends GetxController {
   }
 
   Future<void> updateUserDoc(User user, String downloadUrl) async {
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userRef =
+        FirebaseFirestore.instance.collection('users').doc(user.uid);
+
     return await userRef.set({
       'uid': user.uid,
       'displayname': user.displayName,
@@ -175,5 +189,27 @@ class TasksController extends GetxController {
       'photouRL': user.photoURL,
       "createdDate": user.metadata.creationTime
     }, SetOptions(merge: true));
+  }
+
+  Future<List<File>> downloadTaskFiles({required String taskId}) async {
+    final storageRef = FirebaseStorage.instanceFor(
+            bucket: "gs://smokeless-todo.firebasestorage.app")
+        .ref();
+    final taskFolderRef = storageRef.child("tasks/$taskId");
+    List<File> files = [];
+
+    await taskFolderRef.listAll().then((result) async {
+      //log each file in the folder
+      for (var item in result.items) {
+        log('taskController=>Item:${item.name}');
+        //Get the file from the Item
+        final appDocDir = await getApplicationDocumentsDirectory();
+        final filePath = "${appDocDir.absolute}/tasks/$taskId/${item.name}";
+        final file = File(filePath);
+        files.add(file);
+      }
+    });
+
+    return files;
   }
 }

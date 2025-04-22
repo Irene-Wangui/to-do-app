@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "60715658380-5393eloeu3og897qm35i7l98rrmmb5ge.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "college.smokeless.alfredwatodo.smokeless_todo",
+            "certificate_hash": "b4da6df809e929dbd70889c1f169906545bc3a97"
+          }
+        },
+        {
           "client_id": "60715658380-0jeb91e6vrvlqmbmdg918m08tcl6pb4k.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -49,6 +57,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "60715658380-5mti92dpg2suv4mi2uf0ngk58savt752.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "college.smokeless.glory.mw.todo.to_do",
+            "certificate_hash": "0db03bed86dfb5490b9c862b75d7e325759d9428"
+          }
+        },
         {
           "client_id": "60715658380-0jeb91e6vrvlqmbmdg918m08tcl6pb4k.apps.googleusercontent.com",
           "client_type": 3
@@ -86,6 +102,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "60715658380-sbjhdd6sbrqsl9bnm13ifffg0o9uv8e0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "college.smokeless.irenematodo.todoapp",
+            "certificate_hash": "10db898d5f8a9852241618b200d7a619e9363af9"
+          }
+        },
+        {
           "client_id": "60715658380-0jeb91e6vrvlqmbmdg918m08tcl6pb4k.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -121,6 +145,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "60715658380-hs4bki8t01e16k08rf6bpo9rjaajt4rt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "college.smokeless.mercychtodo.todo",
+            "certificate_hash": "71e7beb090a7dbeeab222dc21bbc418ed3dea18c"
+          }
+        },
         {
           "client_id": "60715658380-0jeb91e6vrvlqmbmdg918m08tcl6pb4k.apps.googleusercontent.com",
           "client_type": 3
@@ -158,6 +190,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "60715658380-us5sns0mgq65cecb357d70vsfaekv501.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "college.smokeless.stellanytodo.todo_app",
+            "certificate_hash": "ec7bf1ed7b95bf3d42b098259eeadda3e70534fe"
+          }
+        },
+        {
           "client_id": "60715658380-0jeb91e6vrvlqmbmdg918m08tcl6pb4k.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -193,6 +233,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "60715658380-j2bph91qg7llhcede3f3lvup3mpmsfrj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "college.smokeless.stellawatodo.to_do_app",
+            "certificate_hash": "a203a95ad2eab6f376460c844b883f45d383ed51"
+          }
+        },
         {
           "client_id": "60715658380-0jeb91e6vrvlqmbmdg918m08tcl6pb4k.apps.googleusercontent.com",
           "client_type": 3

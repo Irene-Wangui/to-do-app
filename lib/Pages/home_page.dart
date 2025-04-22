@@ -2,12 +2,17 @@
 
 import 'dart:developer';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:todoapp/Pages/my_account_page.dart';
+import 'package:todoapp/Pages/taskpage.dart';
 import 'package:todoapp/controllers/auth_contoller.dart';
+import 'package:todoapp/controllers/notifications_controllers.dart';
 import 'package:todoapp/controllers/tasks_controller.dart';
 import 'package:todoapp/models/task_model.dart';
 import 'package:todoapp/theme/styles.dart';
@@ -24,13 +29,48 @@ class _HomePageState extends State<HomePage> {
   User? user = FirebaseAuth.instance.currentUser;
   final authcontroller = AuthController.to;
   TasksController tasksController = Get.put(TasksController(), permanent: true);
+  NotificationsController notificationsController = Get.put(NotificationsController(), permanent: true);
   DateTime? pickedDate;
 
   @override
   void initState() {
     super.initState();
-    // tasksController = Get.put(TasksController(), permanent: true);
+    getFcmToken();
+    listenToTokenRefresh();
+
     log('homepage initialized');
+  }
+
+  void getFcmToken() async {
+    final db = FirebaseFirestore.instance;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      log("User not logged in. Cannot upload FCM token.");
+      return;
+    }
+
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      log("Initial FCM Token: $fcmToken");
+
+      if (fcmToken != null) {
+        await db.collection('users').doc(user.uid).update({
+          'fcmToken': fcmToken,
+        });
+        log("FCM Token updated in Firestore.");
+      }
+    } catch (e) {
+      log("Error getting or updating FCM token: $e");
+    }
+  }
+
+  void listenToTokenRefresh() {
+    FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) {
+      log("FCM Token refreshed: $fcmToken");
+    }).onError((err) {
+      log("Error on token refresh: $err");
+    });
   }
 
   void onSave(TaskItem t) {
@@ -86,6 +126,14 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.green,
       ),
     );
+  }
+
+  void onEditTask(TaskItem task) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => Taskpage(
+        importedTask: task,
+      ),
+    ));
   }
 
   void showAddTaskModal(BuildContext context) {
@@ -180,17 +228,22 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
-        leading: Padding(
-          padding: EdgeInsets.only(left: 5, top: 10),
-          child: Text(
-            " Hello,${user?.displayName!.split(' ').first ?? 'User'}",
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, overflow: TextOverflow.visible),
-          ),
-        ),
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: PopupMenuButton(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  " Hello, ${user?.displayName!.split(' ').first ?? 'User'}",
+                  style: $styles.text.headlineLarge,
+                ),
+                // SizedBox(height: 10),
+              ],
+            ),
+            //Padding(
+            //padding: const EdgeInsets.all(8.0),
+            PopupMenuButton(
               onSelected: (value) {
                 if (value == "My Account") {
                   Get.to(() => const MyAccountPage());
@@ -234,17 +287,13 @@ class _HomePageState extends State<HomePage> {
                 const PopupMenuItem(value: "Logout", child: Text("log out")),
               ],
               child: CircleAvatar(
-                radius: 40,
+                radius: 25,
                 backgroundImage: CachedNetworkImageProvider(
                   user?.photoURL ?? "https://www.example.com/default-avatar.png",
                 ),
               ),
             ),
-          ),
-        ],
-        title: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-          child: const Text("ToDo App"),
+          ],
         ),
       ),
       body: GetX<TasksController>(
@@ -263,9 +312,14 @@ class _HomePageState extends State<HomePage> {
                 child: Text("No tasks yet"),
               );
 
-            return ListView(
-              children: tasksController.tasks.map((item) => TodoListItem(task: item)).toList(),
-            );
+            return ListView(children: [
+              ...tasksController.tasks.map((item) => TodoListItem(
+                    task: item,
+                    onEdit: onEditTask,
+                    onDelete: onDelete,
+                    onStatusChange: onStatusChange,
+                  )),
+            ]);
           }),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
